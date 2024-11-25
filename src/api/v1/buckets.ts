@@ -71,3 +71,27 @@ const v_validateBucketSchema = ajv.compile(s_validateBucketSchema)
 export const validateBucketSchema = (body: unknown): { success: boolean; msg: string } => {
 	return validateSchema(v_validateBucketSchema, body)
 }
+
+
+const s_validateBucketPatchSchema = {
+	type: "object",
+	properties: {
+		name: { type: "string", maxLength: 150, minLength: 1 },
+		desc: { type: "string", maxLength: 500, minLength: 0 },
+		color: { type: "string", maxLength: 10 },
+		icon: { type: "string", format: "emoji3" },
+		rank: { type: "string", pattern: "^0\|[a-z0-9]{6,}(:)?[a-z0-9]{0,}$" },
+	},
+	nullable: false,
+	additionalProperties: false,
+	errorMessage: {
+		properties: {
+			icon: "Icon must be an emoji or max 3 characters long",
+		},
+	},
+}
+const v_validateBucketPatchSchema = ajv.compile(s_validateBucketPatchSchema)
+
+export const validateBucketPatchSchema = (body: unknown): { success: boolean; msg: string } => {
+	return validateSchema(v_validateBucketPatchSchema, body)
+}
