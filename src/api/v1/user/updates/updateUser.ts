@@ -37,30 +37,25 @@ export const doesUserHaveVersion = async (uid: string, version: number): Promise
 
 export const updateUser = async (lastVersion: number, newVersion: number, uid: string) => {
 	if (lastVersion >= newVersion) return
+	if (lastVersion >= versionMigrationList[versionMigrationList.length - 1]) return
 
-	for (let i = 0; i < versionMigrationList.length; ++i) {
-		const version = versionMigrationList[i]
+	if (lastVersion < 111 && newVersion >= 111) {
+		// Custom fields update
+		await update122(uid)
+	}
 
-		if (lastVersion >= version) continue
+	if (lastVersion < 149 && newVersion >= 149) {
+		// Public api update
+		await update150(uid)
+	}
 
-		if (version == 111 && lastVersion < 111 && newVersion >= version) {
-			// Custom fields update
-			await update122(uid)
-		}
+	if (lastVersion < 150 && newVersion >= 150) {
+		// Remove null info fields in members
+		await update151(uid)
+	}
 
-		if (version == 149 && lastVersion < 149 && newVersion >= version) {
-			// Public api update
-			await update150(uid)
-		}
-
-		if (version == 150 && lastVersion < 150 && newVersion >= version) {
-			// Remove null info fields in members
-			await update151(uid)
-		}
-
-		if (version == 300 && lastVersion < 300 && newVersion >= version) {
-			// Convert privacy fields to privacy buckets
-			await update300(uid)
-		}
+	if (lastVersion < 300 && newVersion >= 300) {
+		// Convert privacy fields to privacy buckets
+		await update300(uid)
 	}
 }
