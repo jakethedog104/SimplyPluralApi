@@ -104,8 +104,8 @@ export const initializeServer = async () => {
 			assert(!Number.isNaN(legacyMinIOPort), "LEGACY_MINIO_PORT must be a number")
 			assert(legacyMinIOPort >= 1024 && legacyMinIOPort <= 65534, "LEGACY_MINIO_PORT must be between 1024 and 66534")
 
-			assert(process.env.LEGACY_MINIO_ACCESS_KEY, "LEGACY_S3_ACCESS_KEY is required")
-			assert(process.env.LEGACY_MINIO_ACCESS_SECRET, "LEGACY_S3_ACCESS_SECRET is required")
+			assert(process.env.LEGACY_MINIO_ACCESS_KEY, "LEGACY_MINIO_ACCESS_KEY is required")
+			assert(process.env.LEGACY_MINIO_ACCESS_SECRET, "LEGACY_MINIO_ACCESS_SECRET is required")
 
 			const legacyMinIOTarget = new StorageTargetMinIO(process.env.LEGACY_MINIO_BUCKET)
 			legacyMinIOTarget.init(process.env.LEGACY_MINIO_ENDPOINT, legacyMinIOPort, process.env.LEGACY_MINIO_ACCESS_KEY, process.env.LEGACY_MINIO_ACCESS_SECRET)
