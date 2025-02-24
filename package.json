@@ -13,6 +13,8 @@
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.606.0",
+		"@date-fns/tz": "github:date-fns/tz",
+		"@date-fns/utc": "^2.1.0",
 		"@faker-js/faker": "^7.5.0",
 		"@google-cloud/common": "^3.9.0",
 		"@sentry/node": "^8.13.0",
@@ -53,6 +55,8 @@
 		"bson": "4.7.2",
 		"cors": "^2.8.5",
 		"currency-symbol-map": "^5.1.0",
+		"date-fns": "^4.1.0",
+		"date-fns-tz": "^3.2.0",
 		"deep-diff": "^1.0.2",
 		"dotenv": "^16.0.1",
 		"express": "^4.17.3",

@@ -1,4 +1,5 @@
-import moment from "moment-timezone";
+import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate } from "date-fns"
+import TZDate from "date-fns-tz"
 import { getCollection } from "../mongo";
 import { notifyUser } from "../notifications/notifications";
 import promclient from "prom-client";
@@ -6,21 +7,19 @@ import promclient from "prom-client";
 const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	const queuedEvents = getCollection("queuedEvents");
 
-	const now = moment();
+	const now = Date.now()
 
 	const hour: number = data.time.hour;
 	const minute: number = data.time.minute;
 
-	const timzone: string = userData.location;
-	const formattedTime = data.startTime.year + "-" + ("00" + data.startTime.month).slice(-2) + "-" + ("00" + data.startTime.day).slice(-2) + " " + ("00" + hour).slice(-2) + ":" + ("00" + minute).slice(-2);
-
-	const initialTime = moment.tz(formattedTime, "YYYY-MM-DD HH:mm", true, timzone);
-
-	if (initialTime.valueOf() > now.valueOf()) {
+	const timezone: string = userData.location;
+	const startDay = TZDate.toDate(new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute) , {timeZone: timezone});
+	
+	if (startDay.valueOf() > now.valueOf()) {
 		queuedEvents.insertOne({
 			uid: uid,
 			event: "scheduledRepeatReminder",
-			due: initialTime.valueOf(),
+			due: startDay.valueOf(),
 			message: data.message,
 			reminderId: data._id,
 		});
@@ -28,10 +27,17 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	}
 
 	const intervalInDays: number = data.dayInterval;
-	const differenceInDays = now.diff(initialTime, "days");
-	const nextDue = initialTime.add(differenceInDays + intervalInDays, "days").valueOf();
+	const diffInCalendarDays : number = differenceInCalendarDays(now, startDay);
+	const daysUntilNextInterval : number = diffInCalendarDays % intervalInDays;
 
-	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDue, message: data.message, reminderId: data._id });
+	const today = getDate(now);
+
+	const nextDueDay = addDays(today, daysUntilNextInterval); 
+	const nextDueTime = TZDate.toDate(new Date(nextDueDay.getMonth(), nextDueDay.getDay(), nextDueDay.getFullYear(), hour, minute) , {timeZone: timezone});
+
+	// Delete any reminder already registered under this id, this shouldn't be possible though
+	queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
+	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime.getUTCMilliseconds(), message: data.message, reminderId: data._id });
 };
 
 const repeat_reminders_counter = new promclient.Counter({
