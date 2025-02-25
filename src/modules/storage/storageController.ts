@@ -1,5 +1,5 @@
 import assert from "assert"
-import { StorageTarget } from "./storageTarget"
+import { StoragePutOptions, StorageTarget } from "./storageTarget"
 
 export class StorageController {
 	private storageTargets: StorageTarget[] = []
@@ -35,9 +35,9 @@ export class StorageController {
 		return undefined
 	}
 
-	async put(path: string, buffer: Buffer): Promise<boolean> {
+	async put(path: string, buffer: Buffer, options?: StoragePutOptions | undefined): Promise<boolean> {
 		if (this.primaryStorageTarget) {
-			const primaryResult: boolean = await this.primaryStorageTarget.put(path, buffer)
+			const primaryResult: boolean = await this.primaryStorageTarget.put(path, buffer, options)
 			if (primaryResult) {
 				return primaryResult
 			}
@@ -58,6 +58,27 @@ export class StorageController {
 			const storageTarget = this.storageTargets[i]
 			if (storageTarget != this.primaryStorageTarget) {
 				const targetResult: boolean = await storageTarget.delete(path)
+				if (targetResult) {
+					return targetResult
+				}
+			}
+		}
+
+		return false
+	}
+
+	async deleteFolder(path: string): Promise<boolean> {
+		if (this.primaryStorageTarget) {
+			const primaryResult: boolean = await this.primaryStorageTarget.deleteFolder(path)
+			if (primaryResult) {
+				return primaryResult
+			}
+		}
+
+		for (let i = 0; i < this.storageTargets.length; i++) {
+			const storageTarget = this.storageTargets[i]
+			if (storageTarget != this.primaryStorageTarget) {
+				const targetResult: boolean = await storageTarget.deleteFolder(path)
 				if (targetResult) {
 					return targetResult
 				}

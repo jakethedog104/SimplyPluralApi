@@ -8,11 +8,11 @@ import { documentObject } from "../modules/mongo/baseTypes"
 import { dispatchDelete, OperationType } from "../modules/socket"
 import { FriendLevel, friendReadCollections, getFriendLevel, isFriend, isPendingFriend, isTrustedFriend } from "../security"
 import { parseForAllowedReadValues } from "../security/readRules"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "../api/v1/user/updates/updateUser"
 import { diff } from "deep-diff"
 import { DiffProcessor, logAudit, logCreatedAudit, logDeleteAudit } from "./diff"
 import internal, { Stream, Transform } from "stream"
 import assert from "assert"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "./version"
 
 export function transformResultForClientRead(value: documentObject, requestorUid: string) {
 	parseForAllowedReadValues(value, requestorUid)

@@ -1,20 +1,20 @@
-import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate } from "date-fns"
-import TZDate from "date-fns-tz"
-import { getCollection } from "../mongo";
-import { notifyUser } from "../notifications/notifications";
-import promclient from "prom-client";
+import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate, startOfDay, interval, addHours, addMinutes } from "date-fns"
+import { fromZonedTime, toDate, toZonedTime } from "date-fns-tz"
+import { getCollection } from "../mongo"
+import { notifyUser } from "../notifications/notifications"
+import promclient from "prom-client"
 
 const scheduleReminder = async (uid: string, data: any, userData: any) => {
-	const queuedEvents = getCollection("queuedEvents");
+	const queuedEvents = getCollection("queuedEvents")
 
 	const now = Date.now()
 
-	const hour: number = data.time.hour;
-	const minute: number = data.time.minute;
+	const hour: number = data.time.hour
+	const minute: number = data.time.minute
 
-	const timezone: string = userData.location;
-	const startDay = TZDate.toDate(new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute) , {timeZone: timezone});
-	
+	const timezone: string = userData.location
+	const startDay = toDate(new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute), { timeZone: timezone })
+
 	if (startDay.valueOf() > now.valueOf()) {
 		queuedEvents.insertOne({
 			uid: uid,
@@ -22,61 +22,85 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 			due: startDay.valueOf(),
 			message: data.message,
 			reminderId: data._id,
-		});
-		return;
+		})
+		return
 	}
 
-	const intervalInDays: number = data.dayInterval;
-	const diffInCalendarDays : number = differenceInCalendarDays(now, startDay);
-	const daysUntilNextInterval : number = diffInCalendarDays % intervalInDays;
+	const intervalInDays: number = data.dayInterval
+	const diffInCalendarDays: number = differenceInCalendarDays(now, startDay)
+	const daysUntilNextInterval: number = diffInCalendarDays % intervalInDays
 
-	const today = getDate(now);
+	const today = getDate(now)
 
-	const nextDueDay = addDays(today, daysUntilNextInterval); 
-	const nextDueTime = TZDate.toDate(new Date(nextDueDay.getMonth(), nextDueDay.getDay(), nextDueDay.getFullYear(), hour, minute) , {timeZone: timezone});
+	const nextDueDay = addDays(today, daysUntilNextInterval)
+	const nextDueTime = getNextReminderTime(now, startDay, intervalInDays, timezone, hour, minute)
 
 	// Delete any reminder already registered under this id, this shouldn't be possible though
 	queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
-	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime.getUTCMilliseconds(), message: data.message, reminderId: data._id });
-};
+	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime.getTime(), message: data.message, reminderId: data._id })
+}
+
+export const getNextReminderTime = (utcNow: number, timezonedStart: Date, intervalInDays: number, timezone: string, hour: number, minute: number) => {
+	const timezonedNow = toZonedTime(new Date(utcNow), timezone)
+
+	console.log(timezonedNow)
+	console.log(timezonedStart)
+
+	const diffInCalendarDays: number = differenceInCalendarDays(timezonedNow, timezonedStart)
+	const daysUntilNextInterval: number = intervalInDays > 1 ? diffInCalendarDays % intervalInDays : diffInCalendarDays
+
+	console.log(diffInCalendarDays)
+
+	console.log(daysUntilNextInterval)
+
+	const today = startOfDay(timezonedNow)
+
+	console.log(today)
+
+	const nextDueDay = addMinutes(addHours(addDays(today, daysUntilNextInterval), hour), minute)
+
+	console.log(nextDueDay)
+
+	return fromZonedTime(nextDueDay, timezone)
+}
 
 const repeat_reminders_counter = new promclient.Counter({
 	name: "apparyllis_api_repeat_reminders_event",
 	help: "Counter for repeat reminders processed",
-});
+})
 
 export const repeatRemindersEvent = async (uid: string) => {
-	const repeatReminders = getCollection("repeatedReminders");
-	const foundReminders = await repeatReminders.find({ uid: uid }).toArray();
+	const repeatReminders = getCollection("repeatedReminders")
+	const foundReminders = await repeatReminders.find({ uid: uid }).toArray()
 
-	const privateUserData = await getCollection("private").findOne({ uid: uid, _id: uid });
+	const privateUserData = await getCollection("private").findOne({ uid: uid, _id: uid })
 
 	// Remove all scheduled repeat reminders
-	const queuedEvents = getCollection("queuedEvents");
-	await queuedEvents.deleteMany({ uid: uid, event: "scheduledRepeatReminder" });
+	const queuedEvents = getCollection("queuedEvents")
+	await queuedEvents.deleteMany({ uid: uid, event: "scheduledRepeatReminder" })
 
 	// Re-add all repeat reminders
-	foundReminders.forEach((value) => scheduleReminder(uid, value, privateUserData));
+	foundReminders.forEach((value) => scheduleReminder(uid, value, privateUserData))
 
 	repeat_reminders_counter.inc()
-};
+}
 
 const automated_reminders_counter = new promclient.Counter({
 	name: "apparyllis_api_automated_reminders_event",
 	help: "Counter for automated reminders processed",
-});
+})
 
 export const repeatRemindersDueEvent = async (uid: string, event: any) => {
-	const privateUserData = await getCollection("private").findOne({ uid: uid, _id: uid });
+	const privateUserData = await getCollection("private").findOne({ uid: uid, _id: uid })
 	if (privateUserData) {
-		notifyUser(uid, uid, "Reminder", event.message);
-		const repeatReminders = getCollection("repeatedReminders");
-		const foundReminder = await repeatReminders.findOne({ uid: uid, _id: event.reminderId });
+		notifyUser(uid, uid, "Reminder", event.message)
+		const repeatReminders = getCollection("repeatedReminders")
+		const foundReminder = await repeatReminders.findOne({ uid: uid, _id: event.reminderId })
 		if (foundReminder) {
 			// We can delete the timer
-			scheduleReminder(uid, foundReminder, privateUserData);
+			scheduleReminder(uid, foundReminder, privateUserData)
 		}
 	}
 
 	automated_reminders_counter.inc()
-};
+}

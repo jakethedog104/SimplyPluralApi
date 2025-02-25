@@ -1,7 +1,7 @@
 import { Client } from "minio"
 import * as minio from "minio"
 import { logger } from "../logger"
-import { StorageTarget } from "./storageTarget"
+import { StoragePutOptions, StorageTarget } from "./storageTarget"
 
 export class StorageTargetMinIO implements StorageTarget {
 	private minioClient: Client | undefined
@@ -48,7 +48,7 @@ export class StorageTargetMinIO implements StorageTarget {
 		})
 	}
 
-	async put(path: string, buffer: Buffer): Promise<boolean> {
+	async put(path: string, buffer: Buffer, options: StoragePutOptions | undefined): Promise<boolean> {
 		throw new Error("MinIO should not be used to put any files, this is currently in backwards legacy support mode!")
 	}
 
@@ -68,6 +68,45 @@ export class StorageTargetMinIO implements StorageTarget {
 				})
 
 			resolve(false)
+		})
+	}
+
+	async deleteFolder(path: string): Promise<boolean> {
+		return new Promise<boolean>(async (resolve, _reject) => {
+			if (!this.minioClient) {
+				return false
+			}
+			const listedObjects = await this.minioClient.listObjectsV2("spaces", path)
+			if (listedObjects) {
+				const list: minio.BucketItem[] = []
+				const toDeleteList: string[] = []
+
+				listedObjects.on("data", function (item) {
+					list.push(item)
+				})
+
+				listedObjects.on("error", function () {
+					resolve(false)
+				})
+
+				const end = async () => {
+					list.forEach(({ name }) => {
+						if (name) {
+							toDeleteList.push(name)
+						}
+					})
+
+					if (!this.minioClient) {
+						return false
+					}
+
+					await this.minioClient.removeObjects("spaces", toDeleteList)
+
+					resolve(true)
+				}
+
+				listedObjects.on("end", end)
+			}
 		})
 	}
 }

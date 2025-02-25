@@ -3,20 +3,9 @@ import moment from "moment"
 import { frontChange } from "../../modules/events/frontChange"
 import { getCollection, parseId } from "../../modules/mongo"
 import { canSeeMembers, getFriendLevel, isTrustedFriend } from "../../security"
-import {
-	addSimpleDocument,
-	deleteSimpleDocument,
-	fetchCollection,
-	fetchSimpleDocument,
-	getDocumentAccess,
-	sendDocument,
-	sendQuery,
-	transformResultForClientRead,
-	updateSimpleDocument,
-} from "../../util"
+import { addSimpleDocument, deleteSimpleDocument, fetchCollection, fetchSimpleDocument, getDocumentAccess, sendDocument, sendQuery, transformResultForClientRead, updateSimpleDocument } from "../../util"
 import { ajv, getAvatarUuidSchema, getPrivacyDependency, validateSchema } from "../../util/validation"
 import { frameType } from "../types/frameType"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "./user/updates/updateUser"
 import { CustomFieldType } from "./customFields"
 import { Diff } from "deep-diff"
 import { DiffProcessor, DiffResult } from "../../util/diff"
@@ -24,6 +13,7 @@ import { limitStringLength } from "../../util/string"
 import { ObjectId } from "mongodb"
 import { Transform } from "stream"
 import { insertDefaultPrivacyBuckets } from "./privacy/privacy.assign.defaults"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 export const filterFieldsForPrivacy = async (req: Request, res: Response, uid: string, members: any[]): Promise<void> => {
 	const hasMigrated = await doesUserHaveVersion(uid, FIELD_MIGRATION_VERSION)
@@ -216,7 +206,7 @@ const updateDiffProcessor: DiffProcessor = async (uid: string, difference: Diff<
 
 export const update = async (req: Request, res: Response) => {
 	// If user passes in info, but we migrated to FIELD_MIGRATION_VERSION we need to reject this, as 1.11+ has its own dedicated fields update route
-	if (!!req.body.info) {
+	if (req.body.info) {
 		const hasMigrated = await doesUserHaveVersion(res.locals.uid, FIELD_MIGRATION_VERSION)
 		if (hasMigrated) {
 			delete req.body.info

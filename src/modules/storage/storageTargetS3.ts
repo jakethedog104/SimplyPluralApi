@@ -1,5 +1,6 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
-import { StorageTarget } from "./storageTarget"
+import { DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { StoragePutOptions, StorageTarget } from "./storageTarget"
+import { logger } from "../logger"
 
 export class StorageTargetS3 implements StorageTarget {
 	private s3: S3Client | undefined
@@ -41,7 +42,7 @@ export class StorageTargetS3 implements StorageTarget {
 		return undefined
 	}
 
-	async put(path: string, buffer: Buffer): Promise<boolean> {
+	async put(path: string, buffer: Buffer, options: StoragePutOptions | undefined): Promise<boolean> {
 		if (!this.s3) {
 			return false
 		}
@@ -50,6 +51,7 @@ export class StorageTargetS3 implements StorageTarget {
 			Bucket: this.bucketId,
 			Key: path,
 			Body: buffer,
+			ACL: options?.s3.ACL,
 		}
 
 		try {
@@ -81,5 +83,47 @@ export class StorageTargetS3 implements StorageTarget {
 
 		const result = await this.s3.send(command)
 		return !!result
+	}
+
+	async deleteFolder(path: string): Promise<boolean> {
+		const recursiveDelete = async (path: string, token: string | undefined): Promise<boolean> => {
+			if (!this.s3) {
+				return false
+			}
+
+			const params = {
+				Bucket: "simply-plural",
+				Prefix: path,
+				ContinuationToken: token,
+			}
+
+			try {
+				const listCommand = new ListObjectsV2Command(params)
+
+				const list = await this.s3.send(listCommand)
+
+				if (list.NextContinuationToken) {
+					await recursiveDelete(path, list.NextContinuationToken)
+				}
+
+				if (list.KeyCount && list.Contents) {
+					const deleteCommand = new DeleteObjectsCommand({
+						Bucket: "simply-plural",
+						Delete: {
+							Objects: list.Contents.map((item) => ({ Key: item.Key ?? "" })),
+						},
+					})
+
+					await this.s3.send(deleteCommand)
+				}
+			} catch (e) {
+				logger.log("error", e)
+				return false
+			}
+
+			return true
+		}
+
+		return await recursiveDelete(path, undefined)
 	}
 }

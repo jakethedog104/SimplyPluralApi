@@ -8,34 +8,20 @@ import { update122 } from "./user/updates/update112"
 import { auth } from "firebase-admin"
 import { canSeeMembers, getFriendLevel, isTrustedFriend, logSecurityUserEvent } from "../../security"
 import moment from "moment"
-import * as minio from "minio"
 import * as Sentry from "@sentry/node"
 import { ERR_FUNCTIONALITY_EXPECTED_VALID } from "../../modules/errors"
 import { createUser } from "./user/migrate"
 import { exportData, fetchAllAvatars } from "./user/export"
 import { getEmailForUser } from "./auth/auth.core"
 import { frameType } from "../types/frameType"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "./user/updates/updateUser"
 import { canGenerateReport, decrementGenerationsLeft, reportBaseUrl, reportBaseUrl_V2, sendReport } from "../base/user"
 import archiver, { Archiver } from "archiver"
 import promclient from "prom-client"
 
 import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3"
 import { filterFields } from "./user/user.fields"
-
-const s3 = new S3Client({
-	endpoint: process.env.OBJECT_HOST ?? "",
-	region: process.env.OBJECT_REGION ?? "none",
-	credentials: { accessKeyId: process.env.OBJECT_KEY ?? "", secretAccessKey: process.env.OBJECT_SECRET ?? "" },
-})
-
-const minioClient = new minio.Client({
-	endPoint: "localhost",
-	port: 9001,
-	useSSL: false,
-	accessKey: process.env.MINIO_KEY!,
-	secretKey: process.env.MINIO_SECRET!,
-})
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
+import { storageController } from "../../modules/storage/storageController"
 
 export const generateReport = async (req: Request, res: Response) => {
 	const canGenerate = await canGenerateReport(res)
@@ -69,16 +55,7 @@ export const deleteReport = async (req: Request, res: Response) => {
 	let reportPath = url.replace(reportBaseUrl, "")
 	reportPath = url.replace(reportBaseUrl_V2, "")
 
-	minioClient
-		.removeObject("spaces", `reports/${res.locals.uid}/${reportPath}`)
-		.then(() => {
-			getCollection("reports").deleteMany({ uid: res.locals.uid, _id: parseId(req.params.reportid) })
-			res.status(200).send({ success: true })
-		})
-		.catch((e) => {
-			logger.error(e)
-			res.status(500).send("Error deleting report")
-		})
+	storageController?.delete(`reports/${res.locals.uid}/${reportPath}`)
 }
 
 export const getMe = async (req: Request, res: Response) => {
@@ -166,71 +143,7 @@ export const SetUsername = async (req: Request, res: Response) => {
 }
 
 const deleteUploadedUserFolder = async (uid: string, prefix: string) => {
-	const deleteFolderPromise = new Promise<any>(async (resolve) => {
-		const recursiveDelete = async (token: string | undefined) => {
-			const params = {
-				Bucket: "simply-plural",
-				Prefix: `${prefix}/${uid}/`,
-				ContinuationToken: token,
-			}
-
-			try {
-				let listCommand = new ListObjectsV2Command(params)
-
-				const list = await s3.send(listCommand)
-
-				if (list.NextContinuationToken) {
-					await recursiveDelete(list.NextContinuationToken)
-				}
-
-				if (list.KeyCount && list.Contents) {
-					let deleteCommand = new DeleteObjectsCommand({
-						Bucket: "simply-plural",
-						Delete: {
-							Objects: list.Contents.map((item) => ({ Key: item.Key ?? "" })),
-						},
-					})
-
-					await s3.send(deleteCommand)
-				}
-			} catch (e) {
-				logger.log("error", e)
-			}
-		}
-
-		await recursiveDelete(undefined)
-
-		const listedObjects = await minioClient.listObjectsV2("spaces", `/${prefix}/${uid}/`)
-		if (listedObjects) {
-			const list: minio.BucketItem[] = []
-			const toDeleteList: string[] = []
-
-			listedObjects.on("data", function (item) {
-				list.push(item)
-			})
-
-			listedObjects.on("error", function () {
-				resolve(false)
-			})
-
-			listedObjects.on("end", async function () {
-				list.forEach(({ name }) => {
-					if (name) {
-						toDeleteList.push(name)
-					}
-				})
-
-				userLog(uid, `Deleting ${toDeleteList.length.toString()} of type ${prefix} in storage`)
-
-				await minioClient.removeObjects("spaces", toDeleteList)
-
-				userLog(uid, `Deleted ${toDeleteList.length.toString()} of type ${prefix} in storage`)
-
-				resolve(true)
-			})
-		}
-	})
-	await deleteFolderPromise
+	await storageController?.deleteFolder(`${prefix}/${uid}`)
 }
 
 export const deleteAccount = async (req: Request, res: Response) => {
@@ -241,7 +154,7 @@ export const deleteAccount = async (req: Request, res: Response) => {
 		return
 	}
 
-	let email = await getEmailForUser(res.locals.uid)
+	const email = await getEmailForUser(res.locals.uid)
 
 	const userDoc = await getCollection("users").findOne({ uid: res.locals.uid, _id: res.locals.uid })
 	const username = userDoc?.username ?? ""
@@ -314,7 +227,7 @@ export const exportAvatars = async (req: Request, res: Response) => {
 
 	arch.pipe(res)
 
-	await fetchAllAvatars(req.query.uid?.toString() ?? "", async (name: String, data: Buffer) => {
+	await fetchAllAvatars(req.query.uid?.toString() ?? "", async (name: string, data: Buffer) => {
 		arch.append(data, { name: name + ".png" })
 	})
 
