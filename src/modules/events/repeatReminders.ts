@@ -1,8 +1,9 @@
-import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate, startOfDay, interval, addHours, addMinutes } from "date-fns"
-import { fromZonedTime, toDate, toZonedTime } from "date-fns-tz"
+import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate, startOfDay, interval, addHours, addMinutes, subHours, parse, set } from "date-fns"
+import { fromZonedTime, getTimezoneOffset, toDate, toZonedTime } from "date-fns-tz"
 import { getCollection } from "../mongo"
 import { notifyUser } from "../notifications/notifications"
 import promclient from "prom-client"
+import assert from "assert"
 
 const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	const queuedEvents = getCollection("queuedEvents")
@@ -13,7 +14,7 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	const minute: number = data.time.minute
 
 	const timezone: string = userData.location
-	const startDay = toDate(new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute), { timeZone: timezone })
+	const startDay = new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute)
 
 	if (startDay.valueOf() > now.valueOf()) {
 		queuedEvents.insertOne({
@@ -27,41 +28,12 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	}
 
 	const intervalInDays: number = data.dayInterval
-	const diffInCalendarDays: number = differenceInCalendarDays(now, startDay)
-	const daysUntilNextInterval: number = diffInCalendarDays % intervalInDays
 
-	const today = getDate(now)
-
-	const nextDueDay = addDays(today, daysUntilNextInterval)
-	const nextDueTime = getNextReminderTime(now, startDay, intervalInDays, timezone, hour, minute)
+	/*const nextDueTime = getTimeTillReminder(startDay.toDateString(), hour, minute, intervalInDays, timezone) + Date.now()
 
 	// Delete any reminder already registered under this id, this shouldn't be possible though
 	queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
-	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime.getTime(), message: data.message, reminderId: data._id })
-}
-
-export const getNextReminderTime = (utcNow: number, timezonedStart: Date, intervalInDays: number, timezone: string, hour: number, minute: number) => {
-	const timezonedNow = toZonedTime(new Date(utcNow), timezone)
-
-	console.log(timezonedNow)
-	console.log(timezonedStart)
-
-	const diffInCalendarDays: number = differenceInCalendarDays(timezonedNow, timezonedStart)
-	const daysUntilNextInterval: number = intervalInDays > 1 ? diffInCalendarDays % intervalInDays : diffInCalendarDays
-
-	console.log(diffInCalendarDays)
-
-	console.log(daysUntilNextInterval)
-
-	const today = startOfDay(timezonedNow)
-
-	console.log(today)
-
-	const nextDueDay = addMinutes(addHours(addDays(today, daysUntilNextInterval), hour), minute)
-
-	console.log(nextDueDay)
-
-	return fromZonedTime(nextDueDay, timezone)
+	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime, message: data.message, reminderId: data._id })*/
 }
 
 const repeat_reminders_counter = new promclient.Counter({
