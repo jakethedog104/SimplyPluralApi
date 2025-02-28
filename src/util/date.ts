@@ -1,40 +1,53 @@
-import { set, differenceInDays, addDays, parse } from "date-fns"
-import { getTimezoneOffset } from "date-fns-tz"
+import { differenceInDays, addDays } from "date-fns"
+import { TZDate } from '@date-fns/tz'
 
-export const dateToIsoDate = (date: Date) => {
-	return date.toISOString().split("T")[0]
+export const createDateWithTimeZone = (year: number, month: number, day: number, hours: number, minutes: number, timezone: string): Date => {
+	const targetDate = new TZDate(year, month-1, day, hours, minutes, 0, timezone)
+	return new Date(targetDate.getTime())
 }
 
-export const createDateWithTimeZone = (year: number, month: number, day: number, hours: number, minutes: number, timezone: string) => {
-	const localDate = new Date(year, month - 1, day)
-	const isoDate = dateToIsoDate(localDate)
-
-	const targetDate = parse(isoDate, "yyyy-MM-dd", Date.now())
-
-	const timeOffset = getTimezoneOffset(timezone)
-
-	const targetTime = set(targetDate, {
-		hours: hours,
-		minutes: minutes,
-		seconds: 0,
-	})
-
-	const timeFound = targetTime.getTime() - timeOffset
-
-	return new Date(timeFound)
+interface GetTimeForReminderConfig {
+	currentTime?: number
+	startYear: number
+	startMonth: number // Calendar Month
+	startDay: number
+	targetHours: number
+	targetMinutes: number
+	targetTimezone: string
+	intervalInDays: number
 }
 
-export const getTimeTillReminder = (now: number, scheduledDate: string /* yyyy-MM-dd */, targetHour: number, targetMinute: number, intervalInDays: number, targetTz: string) => {
-	const daysPassed = differenceInDays(now, parse(scheduledDate, "yyyy-MM-dd", now))
-	const daysTillNotification = intervalInDays - (daysPassed % (intervalInDays + 1))
-	const targetDay = addDays(now, daysTillNotification)
-	const targetTime = set(targetDay, {
-		hours: targetHour,
-		minutes: targetMinute,
-		seconds: 0,
-	})
+export const getTimeForReminder = (config: GetTimeForReminderConfig): number => {
+	const {
+		currentTime = Date.now(),
+		startYear,
+		startMonth,
+		startDay,
+		targetHours,
+		targetMinutes,
+		targetTimezone
+	} = config
 
-	const timeOffset = getTimezoneOffset(targetTz)
-	const timeFound = targetTime.getTime() - timeOffset - now
-	return timeFound <= 0 ? addDays(timeFound, 1).getTime() : timeFound
+	const scheduledStart = new TZDate(startYear, startMonth -1, startDay, targetHours, targetMinutes, targetTimezone)
+	const todayScheduledDate= new TZDate(currentTime, targetTimezone)
+	const daysSince = differenceInDays(todayScheduledDate, scheduledStart)
+
+	const numEvents = Math.floor((daysSince) / config.intervalInDays);
+	const daysSinceStartForLastEvent = (numEvents) * config.intervalInDays
+
+	const daysTillNextNotificationFromStart = numEvents == 0 ? 0 : daysSinceStartForLastEvent + config.intervalInDays
+
+	const nextNotification = addDays(scheduledStart, daysTillNextNotificationFromStart).getTime()
+
+	if (nextNotification < scheduledStart.getTime())
+	{
+		return scheduledStart.getTime()
+	}
+	
+	if (nextNotification <= currentTime)
+	{
+		return addDays(nextNotification, config.intervalInDays).getTime();
+	}
+	
+	return nextNotification
 }

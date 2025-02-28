@@ -1,39 +1,26 @@
-import { format, addDays, differenceInDays, differenceInCalendarDays, constructNow, getDate, startOfDay, interval, addHours, addMinutes, subHours, parse, set } from "date-fns"
-import { fromZonedTime, getTimezoneOffset, toDate, toZonedTime } from "date-fns-tz"
+
+import { getTimeForReminder } from "../../util/date"
 import { getCollection } from "../mongo"
 import { notifyUser } from "../notifications/notifications"
 import promclient from "prom-client"
-import assert from "assert"
 
 const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	const queuedEvents = getCollection("queuedEvents")
 
-	const now = Date.now()
-
-	const hour: number = data.time.hour
-	const minute: number = data.time.minute
-
-	const timezone: string = userData.location
-	const startDay = new Date(data.startTime.month, data.startTime.day, data.startTime.year, hour, minute)
-
-	if (startDay.valueOf() > now.valueOf()) {
-		queuedEvents.insertOne({
-			uid: uid,
-			event: "scheduledRepeatReminder",
-			due: startDay.valueOf(),
-			message: data.message,
-			reminderId: data._id,
-		})
-		return
-	}
-
-	const intervalInDays: number = data.dayInterval
-
-	/*const nextDueTime = getTimeTillReminder(startDay.toDateString(), hour, minute, intervalInDays, timezone) + Date.now()
+	const nextReminderTime = getTimeForReminder({
+		currentTime: Date.now(),
+		startYear: data.startTime.year,
+		startMonth: data.startTime.month,
+		startDay: data.startTime.day,
+		targetHours: data.time.hour,
+		targetMinutes: data.time.minute,
+		targetTimezone: userData.location,
+		intervalInDays: data.dayInterval
+	})
 
 	// Delete any reminder already registered under this id, this shouldn't be possible though
 	queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
-	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextDueTime, message: data.message, reminderId: data._id })*/
+	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextReminderTime, message: data.message, reminderId: data._id })
 }
 
 const repeat_reminders_counter = new promclient.Counter({
