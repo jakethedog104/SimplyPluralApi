@@ -1,4 +1,3 @@
-
 import { getTimeForReminder } from "../../util/date"
 import { getCollection } from "../mongo"
 import { notifyUser } from "../notifications/notifications"
@@ -6,6 +5,11 @@ import promclient from "prom-client"
 
 const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	const queuedEvents = getCollection("queuedEvents")
+
+	// Early out if the user has no location set
+	if (!userData.location) {
+		return
+	}
 
 	const nextReminderTime = getTimeForReminder({
 		currentTime: Date.now(),
@@ -15,7 +19,7 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 		targetHours: data.time.hour,
 		targetMinutes: data.time.minute,
 		targetTimezone: userData.location,
-		intervalInDays: data.dayInterval
+		intervalInDays: data.dayInterval,
 	})
 
 	// Delete any reminder already registered under this id, this shouldn't be possible though
