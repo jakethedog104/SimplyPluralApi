@@ -1,28 +1,36 @@
-import dotenv from "dotenv";
-dotenv.config();
+import dotenv from "dotenv"
+dotenv.config()
 
-import mongoUnit from "mongo-unit";
-import { initializeServer, startServer } from "../modules/server";
-import { assignApiKey, generateNewApiKey } from "../modules/api/keys";
-import { setTestToken } from "./utils";
+import { initializeServer, startServer } from "../modules/server"
+import { assignApiKey, generateNewApiKey } from "../modules/api/keys"
+import { setTestToken } from "./utils"
 
-process.env.UNITTEST = "true";
+import { MongoMemoryServer } from "mongodb-memory-server"
 
-mongoUnit.start({ port: 21079 }).then(async () => {
-	console.log("fake mongo is started: ", mongoUnit.getUrl());
-	process.env["DATABASE_URI"] = mongoUnit.getUrl();
-	mongoUnit.load({});
+process.env.UNITTEST = "true"
 
-	const app = await initializeServer();
-	await startServer(app, mongoUnit.getUrl());
+const setupTest = async () => {
+	const mongod = await MongoMemoryServer.create()
+
+	console.log("fake mongo is started: ", mongod.getUri())
+	process.env["DATABASE_URI"] = mongod.getUri()
+
+	const app = await initializeServer()
+	await startServer(app, mongod.getUri())
 
 	// Generate and assign a test token
-	const token = await generateNewApiKey();
-	await assignApiKey(true, true, true, token, "foo");
+	const token = await generateNewApiKey()
+	await assignApiKey(true, true, true, token, "foo")
 
-	setTestToken(token);
-	console.log("Chosen token is %s", token);
+	setTestToken(token)
+	console.log("Chosen token is %s", token)
+
+	after(async function () {
+		await mongod.stop()
+	})
 
 	// Start the tests
-	run();
-});
+	run()
+}
+
+setupTest()

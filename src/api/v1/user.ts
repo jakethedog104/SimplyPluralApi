@@ -55,7 +55,7 @@ export const deleteReport = async (req: Request, res: Response) => {
 	let reportPath = url.replace(reportBaseUrl, "")
 	reportPath = url.replace(reportBaseUrl_V2, "")
 
-	storageController?.delete(`reports/${res.locals.uid}/${reportPath}`)
+	storageController?.delete(reportPath)
 }
 
 export const getMe = async (req: Request, res: Response) => {
