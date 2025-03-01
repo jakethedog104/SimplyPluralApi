@@ -1,6 +1,7 @@
-import { DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { DeleteObjectCommand, DeleteObjectCommandInput, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client, S3ServiceException } from "@aws-sdk/client-s3"
 import { StoragePutOptions, StorageTarget } from "./storageTarget"
 import { logger } from "../logger"
+import { devLog } from "../development"
 
 export class StorageTargetS3 implements StorageTarget {
 	private s3: S3Client | undefined
@@ -36,6 +37,9 @@ export class StorageTargetS3 implements StorageTarget {
 				return Buffer.from(buffer)
 			}
 		} catch (e) {
+			if (e instanceof S3ServiceException) {
+				devLog(e.message)
+			}
 			return undefined
 		}
 
@@ -63,6 +67,9 @@ export class StorageTargetS3 implements StorageTarget {
 				return true
 			}
 		} catch (e) {
+			if (e instanceof S3ServiceException) {
+				devLog(e.message)
+			}
 			return false
 		}
 
@@ -74,15 +81,34 @@ export class StorageTargetS3 implements StorageTarget {
 			return false
 		}
 
-		const params = {
+		const params: DeleteObjectCommandInput = {
 			Bucket: this.bucketId,
 			Key: path,
 		}
 
-		const command = new DeleteObjectCommand(params)
+		try {
+			const headCommand = new HeadObjectCommand(params)
+			await this.s3.send(headCommand)
+		} catch (e) {
+			if (e instanceof S3ServiceException) {
+				if (e.$metadata.httpStatusCode == 404) {
+					return false
+				}
+				devLog(e.message)
+			}
+		}
 
-		const result = await this.s3.send(command)
-		return !!result
+		try {
+			const deleteCommand = new DeleteObjectCommand(params)
+			const result = await this.s3.send(deleteCommand)
+			return !!result
+		} catch (e) {
+			if (e instanceof S3ServiceException) {
+				devLog(e.message)
+			}
+		}
+
+		return false
 	}
 
 	async deleteFolder(path: string): Promise<boolean> {
@@ -118,6 +144,9 @@ export class StorageTargetS3 implements StorageTarget {
 				}
 			} catch (e) {
 				logger.log("error", e)
+				if (e instanceof S3ServiceException) {
+					devLog(e.message)
+				}
 				return false
 			}
 

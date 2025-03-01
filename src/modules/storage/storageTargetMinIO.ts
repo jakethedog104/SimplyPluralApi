@@ -65,9 +65,8 @@ export class StorageTargetMinIO implements StorageTarget {
 				})
 				.catch((e) => {
 					logger.error(e)
+					resolve(false)
 				})
-
-			resolve(false)
 		})
 	}
 
