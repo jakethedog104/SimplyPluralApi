@@ -56,8 +56,12 @@ const runEvents = async () => {
 			logger.error(e);
 		}
 
+		// Instantly delete it, if we ungracefully stop mid forloop we would end up re-running multiple times
+		queuedEvents.deleteOne({_id: event._id});
+
 		events_counter.inc()
 	});
+
 	queuedEvents.deleteMany({ due: { $lte: now } });
 
 	runDailyUserCounter();

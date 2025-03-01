@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import moment from "moment";
+import moment from "moment-timezone";
 import { getCollection } from "../../modules/mongo";
 import { isMemberOrCustomFront } from "../../util";
 import { ajv, validateSchema } from "../../util/validation";
@@ -26,7 +26,7 @@ const s_validatGetAnalyticsSchema = {
 	additionalProperties: false,
 	required: ["startTime", "endTime"],
 };
-const v_validatGetAnalyticsSchema = ajv.compile(s_validatGetAnalyticsSchema)
+const v_validatGetAnalyticsSchema = ajv.compile(s_validatGetAnalyticsSchema);
 
 export const validatGetAnalyticsSchema = (body: unknown): { success: boolean; msg: string } => {
 	return validateSchema(v_validatGetAnalyticsSchema, body);

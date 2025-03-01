@@ -7,9 +7,9 @@ import { addPendingRequest, PkRequest, PkRequestType } from "./controller"
 import * as Sentry from "@sentry/node"
 import moment from "moment"
 import validUrl from "valid-url"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "../../../api/v1/user/updates/updateUser"
 import { limitStringLength } from "../../../util/string"
 import { insertDefaultPrivacyBuckets } from "../../../api/v1/privacy/privacy.assign.defaults"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../../util/version"
 export interface syncOptions {
 	name: boolean
 	avatar: boolean
@@ -69,14 +69,7 @@ const handlePkResponse = (requestResponse: AxiosResponse<any, any> | { status: n
 	}
 }
 
-export const syncMemberToPk = async (
-	options: syncOptions,
-	spMemberId: string,
-	token: string,
-	userId: string,
-	memberData: any | undefined,
-	knownSystemId: string | undefined
-): Promise<{ success: boolean; msg: string }> => {
+export const syncMemberToPk = async (options: syncOptions, spMemberId: string, token: string, userId: string, memberData: any | undefined, knownSystemId: string | undefined): Promise<{ success: boolean; msg: string }> => {
 	const spMemberResult = await getCollection("members").findOne({ uid: userId, _id: parseId(spMemberId) }, { projection: { name: 1, desc: 1, avatarUrl: 1, pkId: 1, color: 1, pronouns: 1 } })
 
 	if (spMemberResult) {
@@ -183,15 +176,7 @@ export const syncMemberToPk = async (
 	return { success: false, msg: "Member does not exist in Simply Plural for this account." }
 }
 
-export const syncMemberFromPk = async (
-	options: syncOptions,
-	pkMemberId: string,
-	token: string,
-	userId: string,
-	memberData: any | undefined,
-	batch: AnyBulkWriteOperation<any>[] | undefined,
-	privateByDefault: boolean
-): Promise<{ success: boolean; msg: string }> => {
+export const syncMemberFromPk = async (options: syncOptions, pkMemberId: string, token: string, userId: string, memberData: any | undefined, batch: AnyBulkWriteOperation<any>[] | undefined, privateByDefault: boolean): Promise<{ success: boolean; msg: string }> => {
 	let data: any | undefined = memberData
 
 	if (!memberData) {

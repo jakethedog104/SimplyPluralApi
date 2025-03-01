@@ -1,85 +1,54 @@
-import { Request, Response } from "express";
-import { logger, userLog } from "../../modules/logger";
-import { ajv, validateSchema } from "../../util/validation";
-import * as minio from "minio";
-import { isUserVerified } from "../../security";
-import promclient from "prom-client";
+import { Request, Response } from "express"
+import { logger, userLog } from "../../modules/logger"
+import { ajv, validateSchema } from "../../util/validation"
+import { isUserVerified } from "../../security"
+import promclient from "prom-client"
 
-const fileType = require('file-type');
+const fileType = require("file-type")
 
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-
-export const s3 = new S3Client({
-	endpoint: process.env.OBJECT_HOST ?? "",
-	region: process.env.OBJECT_REGION ?? "none",
-	credentials: { accessKeyId: process.env.OBJECT_KEY ?? '', secretAccessKey: process.env.OBJECT_SECRET ?? ''}
-});
-
-const minioClient = new minio.Client({
-	endPoint: "localhost",
-	port: 9001,
-	useSSL: false,
-	accessKey: process.env.MINIO_KEY!,
-	secretKey: process.env.MINIO_SECRET!,
-});
+import { storageController } from "../../modules/storage/storageController"
 
 const update_avatar_counter = new promclient.Counter({
 	name: "apparyllis_api_avatar_upload",
 	help: "Counter for avatar uploads",
-});
+})
 
 export const Store = async (req: Request, res: Response) => {
-	const result = await isUserVerified(res.locals.uid);
+	const result = await isUserVerified(res.locals.uid)
 	if (result === false) {
-		res.status(403).send("You need to verify your account to upload images");
-		return false;
+		res.status(403).send("You need to verify your account to upload images")
+		return false
 	}
 
-	const path = `avatars/${res.locals.uid}/${req.params.dashedid}`;
+	const path = `avatars/${res.locals.uid}/${req.params.dashedid}`
 
-	const buffer = Buffer.from(req.body["buffer"]);
+	const buffer = Buffer.from(req.body["buffer"])
 
 	const resolvedFileType = await fileType.fromBuffer(buffer)
 
-	if (!resolvedFileType)
-	{
-		res.status(400).send("File type cannot be detected from the file, try using another picture.");
-		return false;
+	if (!resolvedFileType) {
+		res.status(400).send("File type cannot be detected from the file, try using another picture.")
+		return false
 	}
 
-	const mime = resolvedFileType.mime;
-	const validMime = mime === "image/png" || mime === "image/jpeg";
-	if (!validMime)
-	{
-		res.status(400).send(`File type not valid. Only JPG and PNG are supported. Your file type is ${mime}`);
-		return false;
+	const mime = resolvedFileType.mime
+	const validMime = mime === "image/png" || mime === "image/jpeg"
+	if (!validMime) {
+		res.status(400).send(`File type not valid. Only JPG and PNG are supported. Your file type is ${mime}`)
+		return false
 	}
 
 	update_avatar_counter.inc()
 
-	const params = {
-		Bucket: "simply-plural",
-		Key: path,
-		Body: buffer,
-	};
+	const putResult = await storageController?.put(path, buffer)
 
-	try {
-		const command = new PutObjectCommand(params);
-
-		const result = await s3.send(command)
-
-		if (result) {
-			res.status(200).send({ success: true, msg: { url: `https://serve.apparyllis.com/avatars/${path}` } });
-			userLog(res.locals.uid, `Stored avatar with size: ${buffer.length}`);
-			return;
-		}
+	if (putResult) {
+		res.status(200).send({ success: true, msg: { url: `https://serve.apparyllis.com/avatars/${path}` } })
+		userLog(res.locals.uid, `Stored avatar with size: ${buffer.length}`)
+	} else {
+		res.status(500).send("Error uploading avatar")
 	}
-	catch (e)
-	{
-		logger.log("error", e)
-		res.status(500).send("Error uploading avatar");
-	}
-};
+}
 
 const s_validateStoreAvatarSchema = {
 	type: "object",
@@ -89,48 +58,28 @@ const s_validateStoreAvatarSchema = {
 	nullable: false,
 	required: ["buffer"],
 	additionalProperties: false,
-};
+}
 const v_validateStoreAvatarSchema = ajv.compile(s_validateStoreAvatarSchema)
 
 export const validateStoreAvatarSchema = (body: unknown): { success: boolean; msg: string } => {
-	return validateSchema(v_validateStoreAvatarSchema, body);
-};
+	return validateSchema(v_validateStoreAvatarSchema, body)
+}
 
 export const Delete = async (req: Request, res: Response) => {
-	const result = await isUserVerified(res.locals.uid);
+	const result = await isUserVerified(res.locals.uid)
 	if (result === false) {
-		res.status(403).send("You need to verify your account to delete images");
-		return false;
+		res.status(403).send("You need to verify your account to delete images")
+		return false
 	}
 
-	const path = `avatars/${res.locals.uid}/${req.params.dashedid}`;
+	const path = `avatars/${res.locals.uid}/${req.params.dashedid}`
 
-	const params = {
-		Bucket: "simply-plural",
-		Key: path,
-	};
+	const deleteResult = await storageController?.delete(path)
 
-	minioClient
-	.removeObject("spaces", path)
-	.then(() => {
-		userLog(res.locals.uid, "Deleted avatar");
-	})
-	.catch((e) => {
-		logger.error(e);
-	});
-
-	try {
-		const command = new DeleteObjectCommand(params);
-
-		const result = await s3.send(command)
-		if (result) {
-			res.status(200).send('Deleted avatar');
-			userLog(res.locals.uid, "Deleted avatar");
-		}
+	if (deleteResult) {
+		res.status(200).send("Deleted avatar")
+		userLog(res.locals.uid, "Deleted avatar")
+	} else {
+		res.status(400).send("Avatar not deleted, either it did not exist or something went wrong")
 	}
-	catch (e)
-	{
-		logger.log("error", e)
-		res.status(500).send("Error uploading avatar");
-	}
-};
+}
