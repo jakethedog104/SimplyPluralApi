@@ -13,3 +13,4 @@ yarn-error.log
 *.log
 developer/
 tmp/
+docker-compose-dev.yml
