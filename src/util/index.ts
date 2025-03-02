@@ -409,7 +409,7 @@ export const getStartOfDay = (): Moment => {
 }
 
 export const isPrimaryInstace = () => {
-	return process.env.NODE_APP_INSTANCE === "0"
+	return process.env.NODE_APP_INSTANCE === "0" || process.env.NODE_APP_INSTANCE === undefined
 }
 
 export const convertListToIds = async (uid: string, collection: string, listOfIds: string[]): Promise<any[]> => {
