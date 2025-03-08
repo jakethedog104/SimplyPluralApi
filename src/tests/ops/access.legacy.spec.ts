@@ -4,9 +4,9 @@ import { getCollection } from "../../modules/mongo"
 import { containsWhereDirect, getTestAxiosUrl, postDocument, sleep } from "../utils"
 import { expect } from "chai"
 import axios from "axios"
-import { FIELD_MIGRATION_VERSION } from "../../api/v1/user/updates/updateUser"
 import { AccountState, registerAccount, setupFront, testCustomFieldsMemberAccess, testFriendAccess, testFrontAccess, testNoFrontAccess, testNoTypeAccess, testTypeAccess } from "./access/utils"
 import { ObjectId } from "mongodb"
+import { FIELD_MIGRATION_VERSION } from "../../util/version"
 
 describe("validate legacy access across accounts", () => {
 	let acc1_legacy: AccountState = { id: "", token: "" } // Legacy Account sharing data
@@ -29,102 +29,59 @@ describe("validate legacy access across accounts", () => {
 		acc6_legacy = await registerAccount(11, acc6_legacy)
 		acc7_legacy = await registerAccount(12, acc7_legacy)
 
-		await getCollection("private").updateMany(
-			{ uid: { $in: [acc1_legacy.id, acc2_legacy.id, acc3_legacy.id, acc4_legacy.id, acc5_legacy.id, acc6_legacy.id, acc7_legacy.id] } },
-			{ $set: { latestVersion: FIELD_MIGRATION_VERSION - 1 } }
-		)
+		await getCollection("private").updateMany({ uid: { $in: [acc1_legacy.id, acc2_legacy.id, acc3_legacy.id, acc4_legacy.id, acc5_legacy.id, acc6_legacy.id, acc7_legacy.id] } }, { $set: { latestVersion: FIELD_MIGRATION_VERSION - 1 } })
 	})
 
 	mocha.test("Befriend legacy test accounts", async () => {
 		// Send friend requests
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/add/${acc2_legacy.id}`),
-				{ settings: { seeMembers: true, seeFront: true, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc1_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/add/${acc2_legacy.id}`), { settings: { seeMembers: true, seeFront: true, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc1_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/add/${acc3_legacy.id}`),
-				{ settings: { seeMembers: true, seeFront: true, getFrontNotif: false, trusted: true } },
-				{ headers: { authorization: acc1_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/add/${acc3_legacy.id}`), { settings: { seeMembers: true, seeFront: true, getFrontNotif: false, trusted: true } }, { headers: { authorization: acc1_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/add/${acc4_legacy.id}`),
-				{ settings: { seeMembers: true, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc1_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/add/${acc4_legacy.id}`), { settings: { seeMembers: true, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc1_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/add/${acc5_legacy.id}`),
-				{ settings: { seeMembers: true, seeFront: false, getFrontNotif: false, trusted: true } },
-				{ headers: { authorization: acc1_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/add/${acc5_legacy.id}`), { settings: { seeMembers: true, seeFront: false, getFrontNotif: false, trusted: true } }, { headers: { authorization: acc1_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/add/${acc6_legacy.id}`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc1_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/add/${acc6_legacy.id}`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc1_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		// Accept friend requests
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc2_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc2_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc3_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc3_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc4_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc4_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc5_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc5_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 
 		{
-			const result = await axios.post(
-				getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`),
-				{ settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } },
-				{ headers: { authorization: acc6_legacy.token }, validateStatus: () => true }
-			)
+			const result = await axios.post(getTestAxiosUrl(`v1/friends/request/respond/${acc1_legacy.id}?accepted=true`), { settings: { seeMembers: false, seeFront: false, getFrontNotif: false, trusted: false } }, { headers: { authorization: acc6_legacy.token }, validateStatus: () => true })
 			expect(result.status).to.eq(200, result.data)
 		}
 

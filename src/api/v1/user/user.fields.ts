@@ -1,7 +1,7 @@
 import { getCollection } from "../../../modules/mongo"
 import { canSeeMembers, getFriendLevel, isTrustedFriend } from "../../../security"
 import { fetchBucketsForFriend } from "../../../util"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "./updates/updateUser"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../../util/version"
 
 export const filterFields = async (friend: string, owner: string, inFields: any) => {
 	const newFields: any = {}

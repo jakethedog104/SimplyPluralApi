@@ -7,7 +7,7 @@ import { fetchSimpleDocument, addSimpleDocument, updateSimpleDocument, fetchColl
 import { ajv, getPrivacyDependency, validateSchema, getAvatarUuidSchema } from "../../util/validation"
 import { frameType } from "../types/frameType"
 import { insertDefaultPrivacyBuckets } from "./privacy/privacy.assign.defaults"
-import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "./user/updates/updateUser"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 export const getCustomFronts = async (req: Request, res: Response) => {
 	if (req.params.system != res.locals.uid) {
@@ -84,6 +84,7 @@ const s_validateCustomFrontSchema = {
 		private: { type: "boolean" },
 		supportDescMarkdown: { type: "boolean" },
 		frame: frameType,
+		preventsFrontNotifs: { type: "boolean" },
 	},
 	nullable: false,
 	additionalProperties: false,
@@ -108,6 +109,7 @@ const s_validatePostCustomFrontSchema = {
 		private: { type: "boolean" },
 		supportDescMarkdown: { type: "boolean" },
 		frame: frameType,
+		preventsFrontNotifs: { type: "boolean" },
 	},
 	required: ["name"],
 	nullable: false,

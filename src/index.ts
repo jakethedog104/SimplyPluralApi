@@ -2,7 +2,7 @@ import dotenv from "dotenv"
 dotenv.config()
 
 import * as Sentry from "@sentry/node"
-const { nodeProfilingIntegration } = require("@sentry/profiling-node")
+import { nodeProfilingIntegration } from "@sentry/profiling-node"
 
 if (process.env.SENTRY_DSN && process.env.SENTRY_SAMPLE_RATE) {
 	try {
@@ -17,7 +17,6 @@ import { startCollectingUsage } from "./modules/usage"
 import admin, { ServiceAccount } from "firebase-admin"
 import { initializeServer, startServer } from "./modules/server"
 import { namedArguments } from "./util/args"
-import * as fs from "fs"
 
 if (namedArguments.development === true) {
 	process.env.DEVELOPMENT = "true"

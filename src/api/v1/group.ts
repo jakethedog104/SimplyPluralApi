@@ -1,20 +1,11 @@
 import { Request, Response } from "express"
 import { getCollection, parseId } from "../../modules/mongo"
 import { dispatchDelete, OperationType } from "../../modules/socket"
-import {
-	fetchSimpleDocument,
-	addSimpleDocument,
-	updateSimpleDocument,
-	fetchCollection,
-	isMemberOrCustomFront,
-	isMember,
-	fetchBucketsForFriend,
-	fetchCollectionPermissionsPreflighted,
-} from "../../util"
+import { fetchSimpleDocument, addSimpleDocument, updateSimpleDocument, fetchCollection, isMemberOrCustomFront, isMember, fetchBucketsForFriend, fetchCollectionPermissionsPreflighted } from "../../util"
 import { ajv, getPrivacyDependency, validateSchema } from "../../util/validation"
 import { insertDefaultPrivacyBuckets } from "./privacy/privacy.assign.defaults"
 import { canSeeMembers } from "../../security"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "./user/updates/updateUser"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 export const getGroups = async (req: Request, res: Response) => {
 	if (req.params.system != res.locals.uid) {

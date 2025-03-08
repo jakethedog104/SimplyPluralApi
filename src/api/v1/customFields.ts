@@ -8,7 +8,7 @@ import { DiffProcessor } from "../../util/diff"
 import { Diff } from "deep-diff"
 import { insertDefaultPrivacyBuckets } from "./privacy/privacy.assign.defaults"
 import { canSeeMembers, getFriendLevel, isTrustedFriend } from "../../security"
-import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "./user/updates/updateUser"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 export const NewFieldsVersion = 300
 
@@ -130,7 +130,7 @@ const s_validatePostCustomFieldSchema = {
 	properties: {
 		name: { type: "string" },
 		type: { type: "number" },
-		order: { type: "string", pattern: "^0\|[a-z0-9]{6,}(:)?[a-z0-9]{0,}$" },
+		order: { type: "string", pattern: "^0|[a-z0-9]{6,}(:)?[a-z0-9]{0,}$" },
 		supportMarkdown: { type: "boolean" },
 	},
 	required: ["name", "supportMarkdown", "type", "order"],
@@ -148,7 +148,7 @@ const s_validatePatchCustomFieldSchema = {
 	properties: {
 		name: { type: "string" },
 		type: { type: "number" },
-		order: { type: "string", pattern: "^0\|[a-z0-9]{6,}(:)?[a-z0-9]{0,}$" },
+		order: { type: "string", pattern: "^0|[a-z0-9]{6,}(:)?[a-z0-9]{0,}$" },
 		supportMarkdown: { type: "boolean" },
 	},
 	required: [],

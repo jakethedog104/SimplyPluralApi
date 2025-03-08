@@ -1,4 +1,3 @@
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "../../api/v1/user/updates/updateUser"
 import { logger } from "../logger"
 import { getCollection, parseId } from "../mongo"
 import { notifyUser } from "../notifications/notifications"
@@ -7,6 +6,7 @@ import { ObjectId } from "mongodb"
 import { performEvent } from "./eventController"
 import { getDocumentAccess } from "../../util"
 import promclient from "prom-client"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 const getFronterString = (entries: Array<string>) => {
 	return entries.join(", ")
@@ -134,9 +134,7 @@ export const frontChange = async (uid: string, removed: boolean, memberId: strin
 
 	if (beforeFrontString !== frontNotificationString || beforeCustomFrontString !== customFrontString) {
 		performEvent("frontChangeShared", uid, 10 * 1000)
-		sharedCollection
-			.updateOne({ uid: uid, _id: uid }, { $set: { beforeFrontNotificationString: frontNotificationString, beforeCustomFrontString: customFrontString } }, { upsert: true })
-			.catch(logger.error)
+		sharedCollection.updateOne({ uid: uid, _id: uid }, { $set: { beforeFrontNotificationString: frontNotificationString, beforeCustomFrontString: customFrontString } }, { upsert: true }).catch(logger.error)
 	}
 
 	const privateBeforeFrontString = privateData.beforeFrontNotificationString
@@ -147,9 +145,7 @@ export const frontChange = async (uid: string, removed: boolean, memberId: strin
 
 	if (privateBeforeFrontString !== privateFrontNotificationString || privateBeforeCustomFrontString !== priavteCustomFrontString) {
 		performEvent("frontChangePrivate", uid, 10 * 1000)
-		privateCollection
-			.updateOne({ uid: uid, _id: uid }, { $set: { beforeFrontNotificationString: privateFrontNotificationString, beforeCustomFrontString: priavteCustomFrontString } }, { upsert: true })
-			.catch(logger.error)
+		privateCollection.updateOne({ uid: uid, _id: uid }, { $set: { beforeFrontNotificationString: privateFrontNotificationString, beforeCustomFrontString: priavteCustomFrontString } }, { upsert: true }).catch(logger.error)
 	}
 
 	if (foundFriends.length <= 0) {
@@ -208,7 +204,9 @@ export const notifyFrontDue = async (uid: string, _event: any) => {
 			const frontStatus = frontStatuses[i]
 			const accessResult = await getDocumentAccess(friend.frienduid, frontStatus, "frontStatuses")
 			if (accessResult.access === true) {
-				customFronterNames.push(frontStatus.name)
+				if (frontStatus.preventsFrontNotifs !== true) {
+					customFronterNames.push(frontStatus.name)
+				}
 			}
 		}
 

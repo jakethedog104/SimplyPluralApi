@@ -2,8 +2,8 @@ import { Request, Response } from "express"
 import { getCollection, parseId } from "../../modules/mongo"
 import { fetchCollection, getDocumentAccess, sendDocument, sendQuery, transformResultForClientRead } from "../../util"
 import { ajv, validateSchema } from "../../util/validation"
-import { FIELD_MIGRATION_VERSION, doesUserHaveVersion } from "./user/updates/updateUser"
 import { filterFields } from "./user/user.fields"
+import { doesUserHaveVersion, FIELD_MIGRATION_VERSION } from "../../util/version"
 
 export const getFriend = async (req: Request, res: Response) => {
 	const document = await getCollection("friends").findOne({ uid: req.params.system, frienduid: req.params.id })
