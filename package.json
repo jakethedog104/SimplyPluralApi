@@ -14,7 +14,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.606.0",
     "@date-fns/tz": "^1.2.0",
-    "@faker-js/faker": "^7.5.0",
     "@google-cloud/common": "^3.9.0",
     "@sentry/node": "^9.3.0",
     "@sentry/profiling-node": "^9.3.0",
