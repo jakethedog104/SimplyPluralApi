@@ -23,7 +23,7 @@ const scheduleReminder = async (uid: string, data: any, userData: any) => {
 	})
 
 	// Delete any reminder already registered under this id, this shouldn't be possible though
-	queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
+	await queuedEvents.deleteMany({ uid: uid, reminderId: data._id })
 	queuedEvents.insertOne({ uid: uid, event: "scheduledRepeatReminder", due: nextReminderTime, message: data.message, reminderId: data._id })
 }
 
