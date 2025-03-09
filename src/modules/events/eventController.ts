@@ -83,6 +83,7 @@ const enqueueEvent = (event: string, uid: string, delay: number) => {
 }
 
 export const init = () => {
+	console.log(`Initializing event controller with instance: ${process.env.NODE_APP_INSTANCE}`)
 	if (isPrimaryInstace()) {
 		// Todo: Edit this so that every server can run queued events and that
 		// getting queued events is atomic, so only one server handles the documents it got returned
@@ -93,5 +94,7 @@ export const init = () => {
 			runEvents()
 			console.log("Bound to events, started event controller")
 		}
+	} else {
+		console.log("Ignorning event controller init, we're not the first instance.")
 	}
 }
