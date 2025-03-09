@@ -20,6 +20,7 @@ COPY --from=builder /build/dist /app/
 COPY --from=builder /build/node_modules/ /app/node_modules/
 COPY --from=builder /build/templates/ /app/templates/
 
+RUN npm i -g pm2
 RUN mkdir -p /var/log/simply-plural
 RUN chown -R node:node /var/log/simply-plural
 RUN chown node:node /app
@@ -29,4 +30,4 @@ USER node
 
 EXPOSE 3000
 
-CMD ["doppler", "run", "--", "node", "index.js"]
+CMD ["doppler", "run", "--", "pm2-runtime", "index.js", "-i", "max"]
